@@ -28,9 +28,9 @@ class Board
             pieceTypeFromSymbol.insert_or_assign('k', Piece::King);
             int file = 0, rank = 7;
             
-            for (int square : squares)
+            for (int i = 0; i < 64; i++)
             {
-                square = 0;
+                squares[i] = 0;
             }
 
             for (char symbol : fen)
