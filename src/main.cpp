@@ -274,9 +274,9 @@ int main()
 {
     Board board;
     bool squareSelected = false;
-    Vector2i selectedSquare(0,0);
     int selectedPieceType;
     Piece activePiece;
+    activePiece.position = -1;
 
     board.texture.loadFromFile("images/board0.png");
     Sprite boardSprite;
@@ -287,11 +287,12 @@ int main()
     Sprite pieceSprite;
     pieceSprite.setTexture(pieceTexture);
 
+    Texture selectionTexture;
+    selectionTexture.loadFromFile("images/selection.png");
+    Sprite selectionSprite;
+    selectionSprite.setTexture(selectionTexture, true);
+
     board.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
-    for (int pieceCode : board.squares)
-    {
-        cout << pieceCode << endl;
-    }
 
     RenderWindow window{VideoMode(453, 453), "Chess"};
 
@@ -312,37 +313,39 @@ int main()
                     break;
 
                 // key pressed
-                /*case sf::Event::MouseButtonPressed:
+                case sf::Event::MouseButtonPressed:            
                     if (event.mouseButton.button == Mouse::Left)
                     {
+                        int x = (event.mouseButton.x - 3) / 56;
+                        int y = (event.mouseButton.y - 3) / 56;
+                        int positionIndex = (8 * y) + x;
                         if (!squareSelected)
                         {
-                            int x = (event.mouseButton.x - 3) / 56;
-                            int y = (event.mouseButton.y - 3) / 56;
-                            if (board.squares[(8 * y) + x] > 0)
+                            if (board.squares[positionIndex] > 0)
                             {
                                 squareSelected = true;
-                                activePiece.position.x = x;
-                                activePiece.position.y = y;
-                                
-                                board.CheckLegalMoves(activePiece);
+                                activePiece.position = positionIndex;
+
+                                //board.CheckLegalMoves(activePiece);
                             }
                             cout << y << endl << x << endl;
                         }
                         
-                        else if (event.mouseCoordinates is in board.legalMoves[])
+                        /*else if (event.mouseCoordinates is in board.legalMoves[]);
                         {
-                            play move
-                        }
+                            //play move
+                            squareSelected = false;
+                        }*/
                         
                         else
                         {
                             squareSelected = false;
+                            activePiece.position = -1;
                             selectedPieceType = 0;
                         }
                     }
                     break;
-                    */
+
                 // we don't process other types of events
                 default:
                     break;
@@ -363,8 +366,15 @@ int main()
 
                 drawnPiece.getTypeAndColour(board.squares[i]);
                 pieceSprite.setTextureRect(IntRect(drawnPiece.type * 57, drawnPiece.colour * 60, 57, 60));
-                pieceSprite.setPosition(3 + (file * 56), 3 + (rank * 56));
+                pieceSprite.setPosition(2 + (file * 56), 2 + (rank * 56));
                 window.draw(pieceSprite);
+
+                if (i == activePiece.position && squareSelected == true)
+                {
+                    cout << "true" << " " << 2 + (file * 56) << " " << 3 + (rank * 56) << endl;
+                    selectionSprite.setPosition(2 + (file * 56), 2 + (rank * 56));
+                    window.draw(selectionSprite);
+                }
             }
         }
         window.display();
