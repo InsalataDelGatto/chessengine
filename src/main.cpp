@@ -2,6 +2,8 @@
 #include <time.h>
 #include <iostream>
 #include <map>
+#include <list>
+#include <algorithm>
 using namespace sf;
 using namespace std;
 
@@ -9,6 +11,40 @@ class Piece
 {
     public:
         const static int None = 0, King = 5, Pawn = 6, Knight = 2, Bishop = 3, Rook = 1, Queen = 4, White = 8, Black = 16;
+        int position;
+        int type;
+        int colour;
+        void getTypeAndColour(int code)
+        {
+            if (code < 15)
+            {
+                colour = 0;
+                type = code - 9;
+            }
+            else
+            {
+                colour = 1;
+                type = code - 17;
+            }
+        }
+        int getColour(int code)
+        {
+            if (code < 15)
+            {
+                return 8;
+            }
+            else
+            {
+                return 16;
+            }
+        }
+};
+
+class Move
+{
+    public:
+        int startingSquare;
+        int targetSquare;
 };
 
 class Board
@@ -16,6 +52,11 @@ class Board
     public:
         int squares[64];
         Texture texture;
+        list<Move> legalMoves;
+        list<int> enPassantTargets;
+
+
+        //Loads a position from a fen code
         void LoadPosition(string fen)
         {
             map<char, int>pieceTypeFromSymbol;
@@ -28,9 +69,9 @@ class Board
             pieceTypeFromSymbol.insert_or_assign('k', Piece::King);
             int file = 0, rank = 7;
             
-            for (int square : squares)
+            for (int i = 0; i < 64; i++)
             {
-                square = 0;
+                squares[i] = 0;
             }
 
             for (char symbol : fen)
@@ -44,10 +85,6 @@ class Board
                 {
                     file += symbol + '0';
                 }
-                else if (symbol == ' ')
-                {
-                    break;
-                }
                 else
                 {
                     int pieceColour = isupper(symbol) ? Piece::White : Piece::Black;
@@ -57,11 +94,189 @@ class Board
                 }
             }
         }
+
+        /*
+        void CheckSquare(int indexModifier, int targetValue)
+        {
+            if (squares[index + indexModifier] <= targetValue)
+            {
+                activeMove.targetSquare.x = (index + indexModifier) % 8;
+                activeMove.targetSquare.y = (index + indexModifier) / 8;
+                legalMoves.push_back(activeMove);
+            }
+        }
+        */
+
+        /*void CheckLegalMoves(Piece checkedPiece)
+        {
+            Move activeMove;
+            activeMove.startingSquare = checkedPiece.position;
+            checkedPiece.getTypeAndColour(squares[checkedPiece.position]);
+            switch (checkedPiece.type)
+            {
+                case 1:
+                    //if it's a white pawn
+                    if (checkedPiece.colour == 8)
+                    {
+                        //moving by one square
+                        if (squares[checkedPiece.position + 8] <= 0)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 8;
+                            legalMoves.push_back(activeMove);
+
+                            //moving by two squares
+                            if ((checkedPiece.position / 8) == 2 && squares[checkedPiece.position + 16] <= 0)
+                            {
+                                activeMove.targetSquare.position = checkedPiece.position + 16;
+                                legalMoves.push_back(activeMove);
+                            }
+                        }
+
+                        //en passant or capture to the left
+                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position + 7) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position + 7]) == 16)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 7;
+                        }
+
+                        //en passant or capture to the right
+                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position + 9) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position + 9]) == 16)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 9;
+                        }
+                    }
+
+                    //if it's a black pawn
+                    else if (checkedPiece.colour == 16)
+                    {
+                        //moving by one square
+                        if (squares[checkedPiece.position - 8] <= 0)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 8;
+                            legalMoves.push_back(activeMove);
+
+                            //moving by two squares
+                            if ((checkedPiece.position / 8) == 2 && squares[checkedPiece.position - 16] <= 0)
+                            {
+                                activeMove.targetSquare.position = checkedPiece.position - 16;
+                                legalMoves.push_back(activeMove);
+                            }
+                        }
+
+                        //en passant or capture to the left
+                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position - 7) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position - 7]) == 8)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 7;
+                            legalMoves.push_back(activeMove);
+                        }
+
+                        //en passant or capture to the right
+                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position - 9) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position - 9]) == 8)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 9;
+                            legalMoves.push_back(activeMove);
+                        }
+                    }
+
+                //knight
+                case 2:
+                    //white
+                    if (checkedPiece.colour == 8)
+                    {
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 6] <= 0) && (checkedPiece.position + 6) / 8 - checkedPiece.position / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 6;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 10] <= 0) && (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 10;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 15] <= 0) && (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 17] <= 0) && (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 17;
+                            legalMoves.push_back(activeMove);
+                        }if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 6] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 6;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 10] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 10;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 15] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 17;
+                            legalMoves.push_back(activeMove);
+                        }
+                    }
+                    //black
+                    else if (checkedPiece.colour == 16)
+                    {
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 6] <= 0) && (checkedPiece.position + 6) / 8 - checkedPiece.position / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 6;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 10] <= 0) && (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 10;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 15] <= 0) && (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 17] <= 0) && (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position + 17;
+                            legalMoves.push_back(activeMove);
+                        }if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 6] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 6;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 10] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 10;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 15] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        {
+                            activeMove.targetSquare.position = checkedPiece.position - 17;
+                            legalMoves.push_back(activeMove);
+                        }
+                    }
+
+            }
+        }*/
 };
 
 int main()
 {
     Board board;
+    bool squareSelected = false;
+    Vector2i selectedSquare(0,0);
+    int selectedPieceType;
+    Piece activePiece;
 
     board.texture.loadFromFile("images/board0.png");
     Sprite boardSprite;
@@ -82,19 +297,60 @@ int main()
 
     while (window.isOpen())
     {
+        Event event;
+
         Vector2i pos = Mouse::getPosition(window);
 
-        for (auto event = Event{}; window.pollEvent(event);)
+        while (window.pollEvent(event))
         {
-            if (event.type == Event::Closed)
+            // check the type of the event...
+            switch (event.type)
             {
-                window.close();
+                // window closed
+                case sf::Event::Closed:
+                    window.close();
+                    break;
+
+                // key pressed
+                /*case sf::Event::MouseButtonPressed:
+                    if (event.mouseButton.button == Mouse::Left)
+                    {
+                        if (!squareSelected)
+                        {
+                            int x = (event.mouseButton.x - 3) / 56;
+                            int y = (event.mouseButton.y - 3) / 56;
+                            if (board.squares[(8 * y) + x] > 0)
+                            {
+                                squareSelected = true;
+                                activePiece.position.x = x;
+                                activePiece.position.y = y;
+                                
+                                board.CheckLegalMoves(activePiece);
+                            }
+                            cout << y << endl << x << endl;
+                        }
+                        
+                        else if (event.mouseCoordinates is in board.legalMoves[])
+                        {
+                            play move
+                        }
+                        
+                        else
+                        {
+                            squareSelected = false;
+                            selectedPieceType = 0;
+                        }
+                    }
+                    break;
+                    */
+                // we don't process other types of events
+                default:
+                    break;
             }
         }
 
         window.clear();
-        int colour;
-        int type;
+        Piece drawnPiece;
         int file;
         int rank;
         window.draw(boardSprite);
@@ -105,17 +361,8 @@ int main()
                 rank = i / 8;
                 file = i % 8;
 
-                if (board.squares[i] < 15)
-                {
-                    colour = 0;
-                    type = board.squares[i] - 9;
-                }
-                else
-                {
-                    colour = 1;
-                    type = board.squares[i] - 17;
-                }
-                pieceSprite.setTextureRect(IntRect(type * 57, colour * 60, (type * 57) + 57, (colour * 60) + 60));
+                drawnPiece.getTypeAndColour(board.squares[i]);
+                pieceSprite.setTextureRect(IntRect(drawnPiece.type * 57, drawnPiece.colour * 60, 57, 60));
                 pieceSprite.setPosition(3 + (file * 56), 3 + (rank * 56));
                 window.draw(pieceSprite);
             }
