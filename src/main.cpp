@@ -46,6 +46,8 @@ class Move
     public:
         int startingSquare;
         int targetSquare;
+        int enPassantSquare;
+        int takingSquare;
 };
 
 class Board
@@ -54,7 +56,7 @@ class Board
         int squares[64];
         Texture texture;
         list<Move> legalMoves;
-        list<int> enPassantTargets;
+        int enPassantTarget;
 
 
         //Loads a position from a fen code
@@ -99,45 +101,41 @@ class Board
         void PlayMove(Move move)
         {
             squares[move.targetSquare] = squares[move.startingSquare];
+            if (move.takingSquare != -1)
+            {
+                squares[move.takingSquare] = 0;
+            }
             squares[move.startingSquare] = 0;
-        }
+            enPassantTarget = move.enPassantSquare;
 
-        bool CheckEnPassantTarget(int squareIndex)
-        {
-            auto searchBegin = enPassantTargets.begin();
-            auto searchEnd = enPassantTargets.end();
-
-            auto result = find(searchBegin, searchEnd, squareIndex);
-
-            return result != searchEnd;
         }
 
         void CheckLine(int piecePos, int increment, int range, int takeableColor, Move activeMove)
         {
-            int howFarIsNotTooFar = abs(increment) > (8 - (piecePos % 8)) ? 1 : 0;
+            int howFarIsNotTooFar = abs(increment) > 1 ? 1 : 0;
             for (int i = 1; i < range + 1; i++)
             {
-                cout << piecePos + i * increment << endl;
-                if (abs((piecePos + (i * increment)) / 8 - (piecePos + ((i - 1) * increment)) / 8) > howFarIsNotTooFar || piecePos + (i * increment) < 0 || piecePos + (i * increment) > 63)
+                if (abs((piecePos + (i * increment)) / 8 - (piecePos + ((i - 1) * increment)) / 8) != howFarIsNotTooFar || piecePos + (i * increment) < 0 || piecePos + (i * increment) > 63)
                 {
-                    cout << "tak jsi píèa blbá?" << endl;
+                    //cout << "tak jsi" << endl;
                     break;
                 }
                 else if (squares[piecePos + (i * increment)] <= 0)
                 {
-                    cout << piecePos + i * increment << endl;
+                    //cout << piecePos + i * increment << endl;
                     activeMove.targetSquare = piecePos + (i * increment);
                     legalMoves.push_back(activeMove);
                 }
                 else if (Piece::getColour(squares[piecePos + (i * increment)]) == takeableColor)
                 {
+                    //cout << piecePos + i * increment << endl;
                     activeMove.targetSquare = piecePos + (i * increment);
                     legalMoves.push_back(activeMove);
                     break;
                 }
                 else
                 {
-                    cout << "mrdka" << endl;
+                    //cout << "coco" << endl;
                     break;
                 }
             }
@@ -150,6 +148,8 @@ class Board
             checkedPiece.position = checkedPiecePos;
             Move activeMove;
             activeMove.startingSquare = checkedPiece.position;
+            activeMove.enPassantSquare = -1;
+            activeMove.takingSquare = -1;
             checkedPiece.getTypeAndColour(squares[checkedPiece.position]);
             cout << checkedPiece.type << " " << checkedPiece.colour << endl;
             switch (checkedPiece.type)
@@ -168,22 +168,37 @@ class Board
                             if ((checkedPiece.position / 8) == 6 && squares[checkedPiece.position - 16] <= 0)
                             {
                                 activeMove.targetSquare = checkedPiece.position - 16;
+                                activeMove.enPassantSquare = checkedPiece.position - 8;
                                 legalMoves.push_back(activeMove);
                             }
                         }
 
                         //en passant or capture to the left
-                        if (CheckEnPassantTarget(checkedPiece.position - 7) || checkedPiece.getColour(squares[checkedPiece.position - 7]) == 16)
+                        if (checkedPiece.getColour(squares[checkedPiece.position - 7]) == 16)
                         {
                             activeMove.targetSquare = checkedPiece.position - 7;
                             legalMoves.push_back(activeMove);
                         }
+                        if (checkedPiece.position - 7 == enPassantTarget)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 7;
+                            activeMove.takingSquare = checkedPiece.position + 1;
+                            legalMoves.push_back(activeMove);
+                            activeMove.takingSquare = -1;
+                        }
 
                         //en passant or capture to the right
-                        if (CheckEnPassantTarget(checkedPiece.position - 9) || checkedPiece.getColour(squares[checkedPiece.position - 9]) == 16)
+                        if (checkedPiece.getColour(squares[checkedPiece.position - 9]) == 16)
                         {
                             activeMove.targetSquare = checkedPiece.position - 9;
                             legalMoves.push_back(activeMove);
+                        }
+                        if (checkedPiece.position - 9 == enPassantTarget)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 9;
+                            activeMove.takingSquare = checkedPiece.position - 1;
+                            legalMoves.push_back(activeMove);
+                            activeMove.takingSquare = -1;
                         }
                     }
 
@@ -200,22 +215,37 @@ class Board
                             if ((checkedPiece.position / 8) == 1 && squares[checkedPiece.position + 16] <= 0)
                             {
                                 activeMove.targetSquare = checkedPiece.position + 16;
+                                activeMove.enPassantSquare = checkedPiece.position + 8;
                                 legalMoves.push_back(activeMove);
                             }
                         }
 
                         //en passant or capture to the left
-                        if (CheckEnPassantTarget(checkedPiece.position + 7) || checkedPiece.getColour(squares[checkedPiece.position + 7]) == 8)
+                        if (checkedPiece.getColour(squares[checkedPiece.position + 7]) == 8)
                         {
                             activeMove.targetSquare = checkedPiece.position + 7;
                             legalMoves.push_back(activeMove);
                         }
+                        if (checkedPiece.position + 7 == enPassantTarget)
+                        {
+                            activeMove.targetSquare = checkedPiece.position + 7;
+                            activeMove.takingSquare = checkedPiece.position + 1;
+                            legalMoves.push_back(activeMove);
+                            activeMove.takingSquare = -1;
+                        }
 
                         //en passant or capture to the right
-                        if (CheckEnPassantTarget(checkedPiece.position + 9) || checkedPiece.getColour(squares[checkedPiece.position + 9]) == 8)
+                        if (checkedPiece.getColour(squares[checkedPiece.position + 9]) == 8)
                         {
                             activeMove.targetSquare = checkedPiece.position + 9;
                             legalMoves.push_back(activeMove);
+                        }
+                        if (checkedPiece.position + 9 == enPassantTarget)
+                        {
+                            activeMove.targetSquare = checkedPiece.position + 9;
+                            activeMove.takingSquare = checkedPiece.position - 1;
+                            legalMoves.push_back(activeMove);
+                            activeMove.takingSquare = -1;
                         }
                     }
                     break;
@@ -459,7 +489,6 @@ int main()
                                 squareSelected = true;
                                 activePiece.position = positionIndex;
 
-                                cout << activePiece.getColour(board.squares[positionIndex]) << endl;
                                 board.CheckLegalMoves(activePiece.position);
                                 for (Move move : board.legalMoves)
                                 {
