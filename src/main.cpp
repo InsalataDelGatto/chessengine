@@ -4,6 +4,7 @@
 #include <map>
 #include <list>
 #include <algorithm>
+#include <math.h>
 using namespace sf;
 using namespace std;
 
@@ -18,24 +19,24 @@ class Piece
         {
             if (code < 15)
             {
-                colour = 0;
-                type = code - 9;
+                colour = White;
+                type = code - White;
             }
             else
             {
-                colour = 1;
-                type = code - 17;
+                colour = Black;
+                type = code - Black;
             }
         }
-        int getColour(int code)
+        static int getColour(int code)
         {
-            if (code < 15)
+            if (code <= 15)
             {
-                return 8;
+                return White;
             }
             else
             {
-                return 16;
+                return Black;
             }
         }
 };
@@ -87,7 +88,7 @@ class Board
                 }
                 else
                 {
-                    int pieceColour = isupper(symbol) ? Piece::White : Piece::Black;
+                    int pieceColour = isupper(symbol) ? Piece::Black : Piece::White;
                     int pieceType = pieceTypeFromSymbol[tolower(symbol)];
                     squares[rank * 8 + file] = pieceType | pieceColour;
                     file++;
@@ -95,179 +96,309 @@ class Board
             }
         }
 
-        /*
-        void CheckSquare(int indexModifier, int targetValue)
+        void PlayMove(Move move)
         {
-            if (squares[index + indexModifier] <= targetValue)
+            squares[move.targetSquare] = squares[move.startingSquare];
+            squares[move.startingSquare] = 0;
+        }
+
+        bool CheckEnPassantTarget(int squareIndex)
+        {
+            auto searchBegin = enPassantTargets.begin();
+            auto searchEnd = enPassantTargets.end();
+
+            auto result = find(searchBegin, searchEnd, squareIndex);
+
+            return result != searchEnd;
+        }
+
+        void CheckLine(int piecePos, int increment, int range, int takeableColor, Move activeMove)
+        {
+            int howFarIsNotTooFar = abs(increment) > (8 - (piecePos % 8)) ? 1 : 0;
+            for (int i = 1; i < range + 1; i++)
             {
-                activeMove.targetSquare.x = (index + indexModifier) % 8;
-                activeMove.targetSquare.y = (index + indexModifier) / 8;
-                legalMoves.push_back(activeMove);
+                cout << piecePos + i * increment << endl;
+                if (abs((piecePos + (i * increment)) / 8 - (piecePos + ((i - 1) * increment)) / 8) > howFarIsNotTooFar || piecePos + (i * increment) < 0 || piecePos + (i * increment) > 63)
+                {
+                    cout << "tak jsi píèa blbá?" << endl;
+                    break;
+                }
+                else if (squares[piecePos + (i * increment)] <= 0)
+                {
+                    cout << piecePos + i * increment << endl;
+                    activeMove.targetSquare = piecePos + (i * increment);
+                    legalMoves.push_back(activeMove);
+                }
+                else if (Piece::getColour(squares[piecePos + (i * increment)]) == takeableColor)
+                {
+                    activeMove.targetSquare = piecePos + (i * increment);
+                    legalMoves.push_back(activeMove);
+                    break;
+                }
+                else
+                {
+                    cout << "mrdka" << endl;
+                    break;
+                }
             }
         }
-        */
 
-        /*void CheckLegalMoves(Piece checkedPiece)
+        void CheckLegalMoves(int checkedPiecePos)
         {
+            cout << "here " << checkedPiecePos << endl;
+            Piece checkedPiece;
+            checkedPiece.position = checkedPiecePos;
             Move activeMove;
             activeMove.startingSquare = checkedPiece.position;
             checkedPiece.getTypeAndColour(squares[checkedPiece.position]);
+            cout << checkedPiece.type << " " << checkedPiece.colour << endl;
             switch (checkedPiece.type)
             {
-                case 1:
+                case checkedPiece.Pawn:
                     //if it's a white pawn
-                    if (checkedPiece.colour == 8)
-                    {
-                        //moving by one square
-                        if (squares[checkedPiece.position + 8] <= 0)
-                        {
-                            activeMove.targetSquare.position = checkedPiece.position + 8;
-                            legalMoves.push_back(activeMove);
-
-                            //moving by two squares
-                            if ((checkedPiece.position / 8) == 2 && squares[checkedPiece.position + 16] <= 0)
-                            {
-                                activeMove.targetSquare.position = checkedPiece.position + 16;
-                                legalMoves.push_back(activeMove);
-                            }
-                        }
-
-                        //en passant or capture to the left
-                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position + 7) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position + 7]) == 16)
-                        {
-                            activeMove.targetSquare.position = checkedPiece.position + 7;
-                        }
-
-                        //en passant or capture to the right
-                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position + 9) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position + 9]) == 16)
-                        {
-                            activeMove.targetSquare.position = checkedPiece.position + 9;
-                        }
-                    }
-
-                    //if it's a black pawn
-                    else if (checkedPiece.colour == 16)
+                    if (checkedPiece.colour == checkedPiece.White)
                     {
                         //moving by one square
                         if (squares[checkedPiece.position - 8] <= 0)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 8;
+                            activeMove.targetSquare = checkedPiece.position - 8;
                             legalMoves.push_back(activeMove);
 
                             //moving by two squares
-                            if ((checkedPiece.position / 8) == 2 && squares[checkedPiece.position - 16] <= 0)
+                            if ((checkedPiece.position / 8) == 6 && squares[checkedPiece.position - 16] <= 0)
                             {
-                                activeMove.targetSquare.position = checkedPiece.position - 16;
+                                activeMove.targetSquare = checkedPiece.position - 16;
                                 legalMoves.push_back(activeMove);
                             }
                         }
 
                         //en passant or capture to the left
-                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position - 7) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position - 7]) == 8)
+                        if (CheckEnPassantTarget(checkedPiece.position - 7) || checkedPiece.getColour(squares[checkedPiece.position - 7]) == 16)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 7;
+                            activeMove.targetSquare = checkedPiece.position - 7;
                             legalMoves.push_back(activeMove);
                         }
 
                         //en passant or capture to the right
-                        if (find(enPassantTargets.begin, enPassantTargets.end, checkedPiece.position - 9) != enPassantTargets.end || checkedPiece.getColour(squares[checkedPiece.position - 9]) == 8)
+                        if (CheckEnPassantTarget(checkedPiece.position - 9) || checkedPiece.getColour(squares[checkedPiece.position - 9]) == 16)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 9;
+                            activeMove.targetSquare = checkedPiece.position - 9;
                             legalMoves.push_back(activeMove);
                         }
                     }
 
-                //knight
-                case 2:
-                    //white
-                    if (checkedPiece.colour == 8)
+                    //if it's a black pawn
+                    else if (checkedPiece.colour == checkedPiece.Black)
                     {
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 6] <= 0) && (checkedPiece.position + 6) / 8 - checkedPiece.position / 8 == 1)
+                        //moving by one square
+                        if (squares[checkedPiece.position + 8] <= 0)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 6;
+                            activeMove.targetSquare = checkedPiece.position + 8;
+                            legalMoves.push_back(activeMove);
+
+                            //moving by two squares
+                            if ((checkedPiece.position / 8) == 1 && squares[checkedPiece.position + 16] <= 0)
+                            {
+                                activeMove.targetSquare = checkedPiece.position + 16;
+                                legalMoves.push_back(activeMove);
+                            }
+                        }
+
+                        //en passant or capture to the left
+                        if (CheckEnPassantTarget(checkedPiece.position + 7) || checkedPiece.getColour(squares[checkedPiece.position + 7]) == 8)
+                        {
+                            activeMove.targetSquare = checkedPiece.position + 7;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 10] <= 0) && (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
+
+                        //en passant or capture to the right
+                        if (CheckEnPassantTarget(checkedPiece.position + 9) || checkedPiece.getColour(squares[checkedPiece.position + 9]) == 8)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 10;
+                            activeMove.targetSquare = checkedPiece.position + 9;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 15] <= 0) && (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
+                    }
+                    break;
+
+                //knight
+                case checkedPiece.Knight:
+                    //white
+                    if (checkedPiece.colour == checkedPiece.White)
+                    {
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 6] <= 0) || (checkedPiece.position + 6) / 8 - checkedPiece.position / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 15;
+                            activeMove.targetSquare = checkedPiece.position + 6;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position + 17] <= 0) && (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 10]) == 16 || squares[checkedPiece.position + 10] <= 0) || (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 17;
-                            legalMoves.push_back(activeMove);
-                        }if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 6] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
-                        {
-                            activeMove.targetSquare.position = checkedPiece.position - 6;
+                            activeMove.targetSquare = checkedPiece.position + 10;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 10] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 15]) == 16 || squares[checkedPiece.position + 15] <= 0) || (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 10;
+                            activeMove.targetSquare = checkedPiece.position + 15;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 15] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 17]) == 16 || squares[checkedPiece.position + 17] <= 0) || (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 15;
+                            activeMove.targetSquare = checkedPiece.position + 17;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 16 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 6]) == 16 || squares[checkedPiece.position - 6] <= 0) || checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 17;
+                            activeMove.targetSquare = checkedPiece.position - 6;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 10]) == 16 || squares[checkedPiece.position - 10] <= 0) || checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 10;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 15]) == 16 || squares[checkedPiece.position - 15] <= 0) || checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 17]) == 16 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 17;
                             legalMoves.push_back(activeMove);
                         }
                     }
                     //black
-                    else if (checkedPiece.colour == 16)
+                    else if (checkedPiece.colour == checkedPiece.Black)
                     {
                         if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 6] <= 0) && (checkedPiece.position + 6) / 8 - checkedPiece.position / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 6;
+                            activeMove.targetSquare = checkedPiece.position + 6;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 10] <= 0) && (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 10]) == 8 || squares[checkedPiece.position + 10] <= 0) && (checkedPiece.position + 10) / 8 - checkedPiece.position / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 10;
+                            activeMove.targetSquare = checkedPiece.position + 10;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 15] <= 0) && (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 15]) == 8 || squares[checkedPiece.position + 15] <= 0) && (checkedPiece.position + 15) / 8 - checkedPiece.position / 8 == 2)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 15;
+                            activeMove.targetSquare = checkedPiece.position + 15;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position + 17] <= 0) && (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position + 17]) == 8 || squares[checkedPiece.position + 17] <= 0) && (checkedPiece.position + 17) / 8 - checkedPiece.position / 8 == 2)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position + 17;
-                            legalMoves.push_back(activeMove);
-                        }if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 6] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
-                        {
-                            activeMove.targetSquare.position = checkedPiece.position - 6;
+                            activeMove.targetSquare = checkedPiece.position + 17;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 10] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 6]) == 8 || squares[checkedPiece.position - 6] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 6) / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 10;
+                            activeMove.targetSquare = checkedPiece.position - 6;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 15] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 10]) == 8 || squares[checkedPiece.position - 10] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 10) / 8 == 1)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 15;
+                            activeMove.targetSquare = checkedPiece.position - 10;
                             legalMoves.push_back(activeMove);
                         }
-                        if ((checkedPiece.getColour(squares[checkedPiece.position + 6]) == 8 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 15]) == 8 || squares[checkedPiece.position - 15] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 15) / 8 == 2)
                         {
-                            activeMove.targetSquare.position = checkedPiece.position - 17;
+                            activeMove.targetSquare = checkedPiece.position - 15;
+                            legalMoves.push_back(activeMove);
+                        }
+                        if ((checkedPiece.getColour(squares[checkedPiece.position - 17]) == 8 || squares[checkedPiece.position - 17] <= 0) && checkedPiece.position / 8 - (checkedPiece.position - 17) / 8 == 2)
+                        {
+                            activeMove.targetSquare = checkedPiece.position - 17;
                             legalMoves.push_back(activeMove);
                         }
                     }
+                    break;
 
+                //king
+                case Piece::King:
+                    if (checkedPiece.colour == Piece::White)
+                    {
+                            CheckLine(checkedPiece.position, 1, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, 7, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, 8, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, 9, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, -1, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, -7, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, -8, 1, Piece::Black, activeMove);
+                            CheckLine(checkedPiece.position, -9, 1, Piece::Black, activeMove);
+                    }
+                    if (checkedPiece.colour == Piece::Black)
+                    {
+                        CheckLine(checkedPiece.position, 1, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 7, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 8, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 9, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -1, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -7, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -8, 1, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -9, 1, Piece::White, activeMove);
+                    }
+                    break;
+                //queen
+                case Piece::Queen:
+                    if (checkedPiece.colour == Piece::White)
+                    {
+                        CheckLine(checkedPiece.position, 1, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, 7, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, 8, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, 9, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -1, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -7, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -8, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -9, 9, Piece::Black, activeMove);
+                    }
+                    if (checkedPiece.colour == Piece::Black)
+                    {
+                        CheckLine(checkedPiece.position, 1, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 7, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 8, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 9, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -1, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -7, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -8, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -9, 9, Piece::White, activeMove);
+                    }
+                    break;
+                //Rook
+                case Piece::Rook:
+                    if (checkedPiece.colour == Piece::White)
+                    {
+                        CheckLine(checkedPiece.position, 1, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, 8, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -1, 9, Piece::Black, activeMove);;
+                        CheckLine(checkedPiece.position, -8, 9, Piece::Black, activeMove);
+                    }
+                    if (checkedPiece.colour == Piece::Black)
+                    {
+                        CheckLine(checkedPiece.position, 1, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 8, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -1, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, -8, 9, Piece::White, activeMove);
+
+                    }
+                    break;
+                //Bishop
+                case Piece::Bishop:
+                    if (checkedPiece.colour == Piece::White)
+                    {                       
+                        CheckLine(checkedPiece.position, 7, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, 9, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -7, 9, Piece::Black, activeMove);
+                        CheckLine(checkedPiece.position, -9, 9, Piece::Black, activeMove);
+                    }
+                    if (checkedPiece.colour == Piece::Black)
+                    {
+                        CheckLine(checkedPiece.position, 7, 9, Piece::White, activeMove);
+                        CheckLine(checkedPiece.position, 9, 9, Piece::White, activeMove);;
+                        CheckLine(checkedPiece.position, -7, 9, Piece::White, activeMove);;
+                        CheckLine(checkedPiece.position, -9, 9, Piece::White, activeMove);
+                    }
+                    break;
             }
-        }*/
+        }
 };
 
 int main()
@@ -319,26 +450,36 @@ int main()
                         int x = (event.mouseButton.x - 3) / 56;
                         int y = (event.mouseButton.y - 3) / 56;
                         int positionIndex = (8 * y) + x;
+                        cout << "pozice: " << positionIndex << endl;
                         if (!squareSelected)
                         {
                             if (board.squares[positionIndex] > 0)
                             {
+                                board.legalMoves.clear();
                                 squareSelected = true;
                                 activePiece.position = positionIndex;
 
-                                //board.CheckLegalMoves(activePiece);
+                                cout << activePiece.getColour(board.squares[positionIndex]) << endl;
+                                board.CheckLegalMoves(activePiece.position);
+                                for (Move move : board.legalMoves)
+                                {
+                                    cout << move.targetSquare << " ";                                  
+                                }
+                                cout << endl;
                             }
                             cout << y << endl << x << endl;
                         }
                         
-                        /*else if (event.mouseCoordinates is in board.legalMoves[]);
-                        {
-                            //play move
-                            squareSelected = false;
-                        }*/
-                        
                         else
                         {
+                            for (Move move : board.legalMoves)
+                            {
+                                if (positionIndex == move.targetSquare)
+                                {
+                                    board.PlayMove(move);
+                                    cout << "played a move!" << endl;
+                                }
+                            }
                             squareSelected = false;
                             activePiece.position = -1;
                             selectedPieceType = 0;
@@ -365,13 +506,15 @@ int main()
                 file = i % 8;
 
                 drawnPiece.getTypeAndColour(board.squares[i]);
-                pieceSprite.setTextureRect(IntRect(drawnPiece.type * 57, drawnPiece.colour * 60, 57, 60));
+                int colour = drawnPiece.colour == 8 ? 1 : 0;
+
+                pieceSprite.setTextureRect(IntRect((drawnPiece.type - 1) * 57, (colour) * 60, 57, 60));
                 pieceSprite.setPosition(2 + (file * 56), 2 + (rank * 56));
                 window.draw(pieceSprite);
 
                 if (i == activePiece.position && squareSelected == true)
                 {
-                    cout << "true" << " " << 2 + (file * 56) << " " << 3 + (rank * 56) << endl;
+                    //cout << "true" << " " << 2 + (file * 56) << " " << 3 + (rank * 56) << endl;
                     selectionSprite.setPosition(2 + (file * 56), 2 + (rank * 56));
                     window.draw(selectionSprite);
                 }
