@@ -14,26 +14,6 @@ class Piece
         const static int None = 0, King = 5, Pawn = 6, Knight = 2, Bishop = 3, Rook = 1, Queen = 4, White = 8, Black = 16;
         inline const static int increments[8] = { 7, 9, -7, -9, 1, 8, -1, -8 };
         int position;
-        int type;
-        int colour;
-        void getTypeAndColour(int code)
-        {
-            if (code > 15)
-            {
-                colour = Black;
-                type = code - Black;
-            }
-            else if (code > 0)
-            {
-                colour = White;
-                type = code - White;
-            }
-            else
-            {
-                colour = 0; 
-                type = 0;
-            }
-        }
         static int getColour(int code)
         {
             if (code > 15)
@@ -80,6 +60,7 @@ class Move
 
 class Board
 {
+
     public:
         int squares[64];
         Texture texture;
@@ -92,6 +73,20 @@ class Board
         //new shite
         list<int> blackPieces;
         list<int> whitePieces;
+
+        Board()
+        {
+
+        }
+        Board(int newSquares[64], list<int> newBlackPieces, list<int> newWhitePieces)
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                squares[i] = newSquares[i];
+            }
+            blackPieces = newBlackPieces;
+            whitePieces = newWhitePieces;
+        }
 
         int enPassantTarget;
         bool blackLong = true;
@@ -157,7 +152,8 @@ class Board
             int blackKingPos;
             whitePieces.clear();
             blackPieces.clear();
-            //Board testingBoard
+            
+            //save positions of every piece and king
             for (int i = 0; i < 64; i++)
             {
                 if (Piece::getColour(squares[i]) == Piece::White)
@@ -178,6 +174,7 @@ class Board
                 }
             }
 
+            //check for checks and pins
             for (int piece : whitePieces)
             {
                 int pieceType = Piece::getType(squares[piece]);
@@ -259,7 +256,7 @@ class Board
 
         void PlayMove(Move move, bool forReal)
         {
-            //move the piece
+            //move the piece, promote if neccessary
             if (move.promoteTo != -1)
             {
                 squares[move.targetSquare] = move.promoteTo | Piece::getColour(squares[move.startingSquare]);
@@ -268,10 +265,10 @@ class Board
             {
                 squares[move.targetSquare] = squares[move.startingSquare];
             }
+            //take pawn if en passant
             if (move.takingSquare != -1)
             {
                 squares[move.takingSquare] = 0;
-                cout << "Google en passant!" << endl << "Holy hell" << endl << "New response just dropped" << endl << "Actual zombie" << endl << "Call the exorcist" << endl;
             }
 
             //move the rook when castling
@@ -289,6 +286,7 @@ class Board
             //clear the starting square
             squares[move.startingSquare] = 0;
 
+            //update castling rights
             if (move.startingSquare == 0 || move.targetSquare == 0)
             {
                 blackLong = false;
@@ -316,9 +314,10 @@ class Board
                 whiteShort = false;
             }
 
-
+            //if pawn two squares then enable en passant
             enPassantTarget = move.enPassantSquare;
 
+            //keep track of pieces and stuff
             UpdateBoardInfo();
         }
 
@@ -447,14 +446,13 @@ class Board
             activeMove.enPassantSquare = -1;
             activeMove.takingSquare = -1;
             activeMove.promoteTo = -1;
-            checkedPiece.getTypeAndColour(squares[checkedPiece.position]);
 
-            //cout << checkedPiece.type << " " << checkedPiece.colour << endl;
-            switch (checkedPiece.type)
+            //cout << checkedPiece.type << " " << checkedPiece.getColour(squares[checkedPiecePos]) << endl;
+            switch (checkedPiece.getType(squares[checkedPiecePos]))
             {
                 case checkedPiece.Pawn:
                     //if it's a white pawn
-                    if (checkedPiece.colour == checkedPiece.White)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == checkedPiece.White)
                     {
                         //moving by one square
                         if (squares[checkedPiece.position - 8] <= 0)
@@ -479,7 +477,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position - 8) / 8 == 0)
                                 {
@@ -508,7 +506,7 @@ class Board
                                 {
                                     legalMoves.push_back(activeMove);
                                 }
-                                else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                                else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                                 {
                                     legalMoves.push_back(activeMove);
                                 }
@@ -539,7 +537,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position - 7) / 8 == 0)
                                 {
@@ -567,7 +565,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -597,7 +595,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position - 9) / 8 == 0)
                                 {
@@ -625,7 +623,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -634,7 +632,7 @@ class Board
                     }
 
                     //if it's a black pawn
-                    else if (checkedPiece.colour == checkedPiece.Black)
+                    else if (checkedPiece.getColour(checkedPiecePos) == checkedPiece.Black)
                     {
                         //moving by one square
                         if (squares[checkedPiece.position + 8] <= 0)
@@ -659,7 +657,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position + 8) / 8 == 7)
                                 {
@@ -688,7 +686,7 @@ class Board
                                 {
                                     legalMoves.push_back(activeMove);
                                 }
-                                else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                                else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                                 {
                                     legalMoves.push_back(activeMove);
                                 }
@@ -718,7 +716,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position + 7) / 8 == 7)
                                 {
@@ -746,7 +744,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -776,7 +774,7 @@ class Board
                                     legalMoves.push_back(activeMove);
                                 }
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 if ((checkedPiece.position + 9) / 8 == 7)
                                 {
@@ -804,7 +802,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -825,7 +823,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -837,7 +835,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -849,7 +847,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -861,7 +859,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -873,7 +871,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -885,7 +883,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -897,7 +895,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -909,7 +907,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -925,7 +923,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -937,7 +935,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -949,7 +947,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -961,7 +959,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -973,7 +971,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -985,7 +983,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -997,7 +995,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -1009,7 +1007,7 @@ class Board
                             {
                                 legalMoves.push_back(activeMove);
                             }
-                            else if (IsLegal(activeMove, checkedPiece.colour == 16 ? 8 : 16))
+                            else if (IsLegal(activeMove, checkedPiece.getColour(squares[checkedPiecePos]) == 16 ? 8 : 16))
                             {
                                 legalMoves.push_back(activeMove);
                             }
@@ -1019,7 +1017,7 @@ class Board
 
                 //king
                 case Piece::King:
-                    if (checkedPiece.colour == Piece::White)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::White)
                     {
                         CheckLine(checkedPiece.position, 1, Piece::Black, activeMove, checkIfCheck);
 
@@ -1039,7 +1037,7 @@ class Board
                             activeMove.casShort = false;
                         }
                     }
-                    if (checkedPiece.colour == Piece::Black)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::Black)
                     {
                         CheckLine(checkedPiece.position, 1, Piece::White, activeMove,  checkIfCheck);
 
@@ -1062,22 +1060,22 @@ class Board
                     break;
                 //queen
                 case Piece::Queen:
-                    if (checkedPiece.colour == Piece::White)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::White)
                     {
                         CheckLine(checkedPiece.position, 9, Piece::Black, activeMove,  checkIfCheck);
                     }
-                    if (checkedPiece.colour == Piece::Black)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::Black)
                     {
                         CheckLine(checkedPiece.position, 9, Piece::White, activeMove,  checkIfCheck);
                     }
                     break;
                 //Rook
                 case Piece::Rook:
-                    if (checkedPiece.colour == Piece::White)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::White)
                     {
                         CheckLine(checkedPiece.position, 9, Piece::Black, activeMove,  checkIfCheck);
                     }
-                    if (checkedPiece.colour == Piece::Black)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::Black)
                     {
                         CheckLine(checkedPiece.position, 9, Piece::White, activeMove,  checkIfCheck);
 
@@ -1085,11 +1083,11 @@ class Board
                     break;
                 //Bishop
                 case Piece::Bishop:
-                    if (checkedPiece.colour == Piece::White)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::White)
                     {                       
                         CheckLine(checkedPiece.position, 9, Piece::Black, activeMove,  checkIfCheck);
                     }
-                    if (checkedPiece.colour == Piece::Black)
+                    if (checkedPiece.getColour(squares[checkedPiecePos]) == Piece::Black)
                     {
                         CheckLine(checkedPiece.position, 9, Piece::White, activeMove, checkIfCheck);
                     }
@@ -1135,12 +1133,13 @@ public:
         }
         return eval;
     }
-    static int minimax(int depth, bool whiteToPlay, int alpha, int beta, Move& bestMove, Board board)
+    static int minimax(int depth, bool whiteToPlay, int alpha, int beta, Move* bestMove, Board board)
     {
         cout << "bober <3" << endl;
+        Board testingBoard{ board.squares, board.blackPieces, board.whitePieces };
         if (depth == 0)
         {
-            return Eval(board.squares);
+            return Eval(testingBoard.squares);
         }
         
         if (whiteToPlay)
@@ -1148,40 +1147,40 @@ public:
             //cout << "ja pierdole" << endl;
             int maxEval = INT_MIN;
             int kingPos;
-            list<int> thisWhitePieces = board.whitePieces;
+            list<int> thisWhitePieces = testingBoard.whitePieces;
             list<Move> placeholderList;
             for (int i : thisWhitePieces)
             {
-                if (Piece::getType(board.squares[i]) == Piece::King)
+                if (Piece::getType(testingBoard.squares[i]) == Piece::King)
                 {
                     kingPos = i;
                 }
-                board.CheckLegalMoves(i, true);
-                placeholderList = board.legalMoves;
+                testingBoard.CheckLegalMoves(i, true);
+                placeholderList = testingBoard.legalMoves;
                 for (Move& testedMove : placeholderList)
                 {
-                    int startingSquare = board.squares[testedMove.startingSquare];
-                    int targetSquare = board.squares[testedMove.targetSquare];
-                    board.PlayMove(testedMove, true);
-                    int eval = minimax(depth - 1, false, alpha, beta, bestMove, board);
+                    int startingSquare = testingBoard.squares[testedMove.startingSquare];
+                    int targetSquare = testingBoard.squares[testedMove.targetSquare];
+                    testingBoard.PlayMove(testedMove, true);
+                    int eval = minimax(depth - 1, false, alpha, beta, bestMove, testingBoard);
                     if (eval > maxEval)
                     {
                         maxEval = eval;
-                        bestMove = testedMove;
+                        *bestMove = testedMove;
                     }
                     alpha = fmax(alpha, maxEval);
                     if (beta <= alpha)
                     {
                         break;
                     }
-                    board.squares[testedMove.startingSquare] = startingSquare;
-                    board.squares[testedMove.targetSquare] = targetSquare;
+                    testingBoard.squares[testedMove.startingSquare] = startingSquare;
+                    testingBoard.squares[testedMove.targetSquare] = targetSquare;
                 }
-                board.legalMoves.clear();
+                testingBoard.legalMoves.clear();
             }
             if (maxEval == INT_MIN)
             {
-                if (board.IsNotTakeable(Piece::Black, kingPos))
+                if (testingBoard.IsNotTakeable(Piece::Black, kingPos))
                 {
                     return 0;
                 }
@@ -1198,44 +1197,44 @@ public:
             //cout << "kurwa bober" << endl;
             int minEval = INT_MAX;
             int kingPos;
-            list<int> thisBlackPieces = board.blackPieces;
+            list<int> thisBlackPieces = testingBoard.blackPieces;
             list<Move> placeholderList;
-            cout << board.blackPieces.size() << endl;
+            cout << testingBoard.blackPieces.size() << endl;
             
             for (int i : thisBlackPieces)
             {
-                if (Piece::getType(board.squares[i]) == Piece::King)
+                if (Piece::getType(testingBoard.squares[i]) == Piece::King)
                 {
                     kingPos = i;
                 }
                 cout << "bober <3 <3" << endl;
-                board.CheckLegalMoves(i, true);
-                placeholderList = board.legalMoves;
+                testingBoard.CheckLegalMoves(i, true);
+                placeholderList = testingBoard.legalMoves;
                 for (Move& testedMove : placeholderList)
                 {
-                    int startingSquare = board.squares[testedMove.startingSquare];
-                    int targetSquare = board.squares[testedMove.targetSquare];
+                    int startingSquare = testingBoard.squares[testedMove.startingSquare];
+                    int targetSquare = testingBoard.squares[testedMove.targetSquare];
                     cout << "bober bober bober <3" << endl;
-                    board.PlayMove(testedMove, true);
-                    int eval = minimax(depth - 1, true, alpha, beta, bestMove, board);
+                    testingBoard.PlayMove(testedMove, true);
+                    int eval = minimax(depth - 1, true, alpha, beta, bestMove, testingBoard);
                     if (eval < minEval)
                     {
                         minEval = eval;
-                        bestMove = testedMove;
+                        *bestMove = testedMove;
                     }
                     beta = fmin(beta, minEval);
                     if (beta <= alpha)
                     {
                         break;
                     }
-                    board.squares[testedMove.startingSquare] = startingSquare;
-                    board.squares[testedMove.targetSquare] = targetSquare;
+                    testingBoard.squares[testedMove.startingSquare] = startingSquare;
+                    testingBoard.squares[testedMove.targetSquare] = targetSquare;
                 }
-                board.legalMoves.clear();
+                testingBoard.legalMoves.clear();
             }
             if (minEval == INT_MIN)
             {
-                if (board.IsNotTakeable(Piece::White, kingPos))
+                if (testingBoard.IsNotTakeable(Piece::White, kingPos))
                 {
                     return 0;
                 }
@@ -1419,10 +1418,9 @@ int main()
                 rank = i / 8;
                 file = i % 8;
 
-                drawnPiece.getTypeAndColour(board.squares[i]);
-                int colour = drawnPiece.colour == 8 ? 1 : 0;
+                int colour = drawnPiece.getColour(board.squares[i]) == 8 ? 1 : 0;
 
-                pieceSprite.setTextureRect(IntRect((drawnPiece.type - 1) * 57, (colour) * 60, 57, 60));
+                pieceSprite.setTextureRect(IntRect((drawnPiece.getType(board.squares[i]) - 1) * 57, (colour) * 60, 57, 60));
                 pieceSprite.setPosition(2 + (file * 56), 2 + (rank * 56));
                 window.draw(pieceSprite);
 
@@ -1444,11 +1442,12 @@ int main()
             }
         }
         window.display();
-        if (activePlayer == Piece::Black)
+        if (activePlayer == Piece::Black && promotionSquare == -1)
         {
             Move bestMove;
-            int eval = Engine::minimax(2, false, INT_MIN, INT_MAX, &bestMove, board);
+            int eval = Engine::minimax(1, false, INT_MIN, INT_MAX, &bestMove, board);
             board.PlayMove(bestMove, true);
+            cout << bestMove.startingSquare << " " << bestMove.targetSquare << endl;
             activePlayer = Piece::White;
         }
     }
