@@ -140,14 +140,14 @@ class Board
                 }
                 else if (isdigit(symbol))
                 {
-                    cout << symbol - '0' << endl;
+                    //cout << symbol - '0' << endl;
                     file += symbol - '0';
                 }
                 else
                 {
                     int pieceColour = isupper(symbol) ? Piece::Black : Piece::White;
                     int pieceType = pieceTypeFromSymbol[tolower(symbol)];
-                    cout << (pieceType | pieceColour) << " rank: " << rank << " file: " << file << endl;
+                    //cout << (pieceType | pieceColour) << " rank: " << rank << " file: " << file << endl;
                     squares[rank * 8 + file] = pieceType | pieceColour;
                     file++;
                 }
@@ -188,7 +188,7 @@ class Board
                     }
                 }
             }
-            cout << "no king?" << endl;
+            //cout << "no king?" << endl;
             return -1;
         }
 
@@ -229,7 +229,7 @@ class Board
                 }
             }
             for (int piece : blackPieces)
-            {
+            {                
                 CheckLegalMoves(squares[piece], false);
                 for (Move &checkedMove : legalMoves)
                 {
@@ -304,7 +304,8 @@ class Board
             //if pawn two squares then enable en passant
             enPassantTarget = move.enPassantSquare;
 
-            cout << "zahrano voe" << endl;
+            //announce success
+            //cout << "zahrano voe" << endl;
 
             //keep track of pieces and stuff
             UpdateBoardInfo();
@@ -321,12 +322,12 @@ class Board
                 {
                     if (abs((piecePos + (i * Piece::increments[increment])) / 8 - (piecePos + ((i - 1) * Piece::increments[increment])) / 8) != howFarIsNotTooFar || piecePos + (i * Piece::increments[increment]) < 0 || piecePos + (i * Piece::increments[increment]) > 63)
                     {
-                        cout << "tak jsi" << endl;
+                        //cout << "tak jsi" << endl;
                         break;
                     }
                     else if (squares[piecePos + (i * Piece::increments[increment])] == 0)
                     {
-                        cout << piecePos + i * Piece::increments[increment] << " je prazdny" << endl;
+                        //cout << piecePos + i * Piece::increments[increment] << " je prazdny" << endl;
                         activeMove.targetSquare = (piecePos + (i * Piece::increments[increment]));
                         if (!checkIfCheck)
                         {
@@ -339,7 +340,7 @@ class Board
                     }
                     else if (Piece::getColour(squares[piecePos + (i * Piece::increments[increment])]) == takeableColor)
                     {
-                        cout << piecePos + i * Piece::increments[increment] << " je zabrany" << endl;
+                        //cout << piecePos + i * Piece::increments[increment] << " je zabrany" << endl;
                         activeMove.targetSquare = piecePos + (i * Piece::increments[increment]);
                         if (!checkIfCheck)
                         {
@@ -353,7 +354,7 @@ class Board
                     }
                     else
                     {
-                        cout << "coco" << endl;
+                        //cout << "coco" << endl;
                         break;
                     }
                 }
@@ -1082,24 +1083,56 @@ class Board
 
 class Engine
 {
+    inline static const float pawnTable[64] = {
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1.1, 1.2, 1.3, 1.3, 1.2, 1.1, 1,
+        1, 1.1, 1.2, 1.4, 1.4, 1.2, 1.1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+    };
+
+    inline static const float knightTable[64] = {
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1.1, 1.2, 1.3, 1.3, 1.2, 1.1, 1,
+        1, 1.1, 1.2, 1.4, 1.4, 1.2, 1.1, 1,
+        1, 1.1, 1.2, 1.4, 1.4, 1.2, 1.1, 1,
+        1, 1.1, 1.2, 1.3, 1.3, 1.2, 1.1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+    };
+
+    inline static const float kingTable[64] = {
+        0.3, 0.4, 0.3, 0.2, 0.2, 0.3, 0.4, 0.3,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+    };
 
 public:
     static const int maxDepth = 0;
 
-    static int Eval(Board board)
+    static float Eval(Board board)
     {
-        int eval = 0;
+        float eval = 0;
         for (int pos : board.blackPieces)
         {
             int piece = board.squares[pos];
             switch (Piece::getType(piece))
             {
             case Piece::Pawn:
-                eval -= 1;
+                eval -= 1 * pawnTable[pos];
                 break;
 
             case Piece::Knight:
-                eval -= 3;
+                eval -= 3 * knightTable[pos];
                 break;
 
             case Piece::Bishop:
@@ -1114,6 +1147,10 @@ public:
                 eval -= 9;
                 break;
 
+            case Piece::King:
+                eval -= kingTable[pos];
+                break;
+
             default:
                 break;
             }
@@ -1124,11 +1161,11 @@ public:
             switch (Piece::getType(piece))
             {
             case Piece::Pawn:
-                eval += 1;
+                eval += 1 * pawnTable[63 - pos];
                 break;
 
             case Piece::Knight:
-                eval += 3;
+                eval += 3 * knightTable[63 - pos];
                 break;
 
             case Piece::Bishop:
@@ -1143,16 +1180,22 @@ public:
                 eval += 9;
                 break;
 
+            case Piece::King:
+                eval += kingTable[63 - pos];
+                break;
+
             default:
                 break;
             }
         }
-        cout << "eval: " << eval << endl;
+        //cout << "eval: " << eval << endl;
         return eval;
     }
-    static int minimax(int depth, bool whiteToPlay, int alpha, int beta, Board board)
+    static float minimax(int depth, bool whiteToPlay, int alpha, int beta, Board board)
     {
         board.UpdateBoardInfo();
+
+        //cout << "depth: " << depth << endl;
 
         //reached max search depth, return the evaluation
         if (depth == 0)
@@ -1164,17 +1207,18 @@ public:
         if (whiteToPlay)
         {
             //eval starts at the minimum
-            int maxEval = INT_MIN;
+            float maxEval = INT_MIN;
 
             for (int piece : board.whitePieces) //using the input board here so the list doesn't change during the loop
             {
-                Board testingBoard{ board.squares, board.blackPieces, board.whitePieces, board.blackLong, board.blackShort, board.whiteLong, board.whiteShort };
-
-                testingBoard.CheckLegalMoves(piece, true);
-                for (Move& testedMove : testingBoard.legalMoves)
+                cout << "white piece: " << piece << endl;
+                
+                board.CheckLegalMoves(piece, true);
+                for (Move& testedMove : board.legalMoves)
                 {
+                    Board testingBoard{ board.squares, board.blackPieces, board.whitePieces, board.blackLong, board.blackShort, board.whiteLong, board.whiteShort };
                     testingBoard.PlayMove(testedMove);
-                    int eval = minimax(depth - 1, false, alpha, beta, testingBoard);
+                    float eval = minimax(depth - 1, false, alpha, beta, testingBoard);
                     if (eval > maxEval)
                     {
                         maxEval = eval;
@@ -1185,7 +1229,6 @@ public:
                         break;
                     }
                 }
-                testingBoard.legalMoves.clear();
             }
             if (maxEval == INT_MIN)
             {
@@ -1199,26 +1242,25 @@ public:
                 }
             }
             
-            cout << maxEval << endl;
+            //cout << maxEval << endl;
             return maxEval;
         }
         else
-        {
-            //cout << "kurwa bober" << endl;
-            int minEval = INT_MAX;
+        {            
+            float minEval = INT_MAX;
             
             for (int piece : board.blackPieces) //using the input board here so the list doesn't change during the loop
             {
-                Board testingBoard{ board.squares, board.blackPieces, board.whitePieces, board.blackLong, board.blackShort, board.whiteLong, board.whiteShort };
-                cout << "piece: " << piece << endl;
-                //cout << "bober <3 <3" << endl;
-                testingBoard.CheckLegalMoves(piece, true);
-                for (Move& testedMove : testingBoard.legalMoves)
+                cout << "black piece: " << piece << endl;
+
+                //cout << "piece: " << piece << endl;                
+                board.CheckLegalMoves(piece, true);
+                for (Move& testedMove : board.legalMoves)
                 {
-                    //cout << "bober bober bober <3" << endl;
-                    cout << "target: " << testedMove.targetSquare << endl;
+                    Board testingBoard{ board.squares, board.blackPieces, board.whitePieces, board.blackLong, board.blackShort, board.whiteLong, board.whiteShort };
+                    //cout << "target: " << testedMove.targetSquare << endl;
                     testingBoard.PlayMove(testedMove);
-                    int eval = minimax(depth - 1, true, alpha, beta, testingBoard);
+                    float eval = minimax(depth - 1, true, alpha, beta, testingBoard);
                     if (eval < minEval)
                     {
                         minEval = eval;
@@ -1229,7 +1271,6 @@ public:
                         break;
                     }
                 }
-                testingBoard.legalMoves.clear();
             }
             if (minEval == INT_MAX)
             {
@@ -1243,7 +1284,7 @@ public:
                 }
             }
             
-            cout << minEval << endl;
+            //cout << minEval << endl;
             return minEval;
         }
     }
@@ -1275,8 +1316,10 @@ int main()
     Sprite selectionSprite;
     selectionSprite.setTexture(selectionTexture, true);
 
-    //board.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
-    board.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/3QK3");
+    board.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+
+    
+    cout << endl;
 
     RenderWindow window{VideoMode(453, 453), "Chess"};
 
@@ -1303,7 +1346,7 @@ int main()
                         int x = (event.mouseButton.x - 3) / 56;
                         int y = (event.mouseButton.y - 3) / 56;
                         int positionIndex = (8 * y) + x;
-                        cout << "pozice: " << positionIndex << endl;
+                        //cout << "pozice: " << positionIndex << endl;
                         if (promotionSquare > -1)
                         {
                             switch (positionIndex)
@@ -1369,7 +1412,7 @@ int main()
                                 activePiece.position = positionIndex;
 
                                 board.CheckLegalMoves(activePiece.position, true);
-                                cout << endl;
+                                //cout << endl;
                                 if (board.legalMoves.empty())
                                 {
                                     for (int piece : board.whitePieces)
@@ -1400,7 +1443,7 @@ int main()
                                     else
                                     {
                                         board.PlayMove(move);
-                                        cout << "played a move!" << endl;
+                                        //cout << "played a move!" << endl;
                                     }                                    
                                     activePlayer = Piece::Black;
                                 }
@@ -1459,20 +1502,20 @@ int main()
         if (activePlayer == Piece::Black && promotionSquare == -1)
         {
             Move bestMove;
-            int minEval = INT_MAX;
+            float minEval = INT_MAX;
 
             board.legalMoves.clear();
             for (int piece : board.blackPieces)
             {
-                cout << "piece: " << piece << endl;
+                //cout << "piece: " << piece << endl;
                 board.CheckLegalMoves(piece, true);
             }
             for (Move& move : board.legalMoves)
             {
-                cout << "Move: " << move.startingSquare << " " << move.targetSquare << endl;
-                int eval = Engine::minimax(Engine::maxDepth, false, INT_MIN, INT_MAX, board);
-                bool isBetter = eval < minEval;
-                cout << "Eval: " << eval << " is better than best eval (" << minEval << "): " << isBetter << endl;
+                Board testingBoard{ board.squares, board.blackPieces, board.whitePieces, board.blackLong, board.blackShort, board.whiteLong, board.whiteShort };
+                //cout << "Move: " << move.startingSquare << " " << move.targetSquare << endl;
+                testingBoard.PlayMove(move);
+                float eval = Engine::minimax(Engine::maxDepth, true, INT_MIN, INT_MAX, testingBoard);
                 if (eval < minEval)
                 {
                     bestMove = move;
@@ -1486,7 +1529,7 @@ int main()
                 return 0;
             }
             board.PlayMove(bestMove);
-            cout << bestMove.startingSquare << " " << bestMove.targetSquare << endl;
+            //cout << bestMove.startingSquare << " " << bestMove.targetSquare << endl;
             activePlayer = Piece::White;
         }
     }
